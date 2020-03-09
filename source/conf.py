@@ -18,7 +18,7 @@ sys.path.insert(0, os.path.abspath('ext'))
 
 # -- Project information -----------------------------------------------------
 
-project = 'Effective Go'
+project = 'The Go Memory Model'
 copyright = '2020, d-tsuji'
 author = 'd-tsuji'
 
@@ -36,7 +36,8 @@ source_parsers = {
 # Add any Sphinx extension module names here, as strings. They can be
 # extensions coming with Sphinx (named 'sphinx.ext.*') or your custom
 # ones.
-extensions = ['pageinfo','sphinx.ext.todo', 'sphinx.ext.githubpages', 'sphinx.ext.mathjax'] #, 'sphinxcontrib.github_ribbon']
+extensions = ['pageinfo', 'sphinx.ext.todo', 'sphinx.ext.githubpages',
+              'sphinx.ext.mathjax']  # , 'sphinxcontrib.github_ribbon']
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ['_templates']
