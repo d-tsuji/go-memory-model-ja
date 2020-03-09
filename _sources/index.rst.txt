@@ -1,4 +1,4 @@
-Effective Go
+The Go Memory Model
 ========================
 
 .. toctree::
