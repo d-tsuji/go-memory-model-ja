@@ -1,0 +1,490 @@
+
+<!DOCTYPE html>
+
+<html xmlns="http://www.w3.org/1999/xhtml" lang="ja">
+  <head>
+    <meta charset="utf-8" />
+    <title>Introduction &#8212; Effective Go  ドキュメント</title>
+    <link rel="stylesheet" href="_static/traditional.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    <script id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+    <script src="_static/jquery.js"></script>
+    <script src="_static/underscore.js"></script>
+    <script src="_static/doctools.js"></script>
+    <script src="_static/language_data.js"></script>
+    <script src="_static/translations.js"></script>
+    <link rel="index" title="索引" href="genindex.html" />
+    <link rel="search" title="検索" href="search.html" />
+    <link rel="next" title="TODO(内部用)" href="todo.html" />
+    <link rel="prev" title="Effective Go" href="index.html" /> 
+  </head><body>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>ナビゲーション</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="総合索引"
+             accesskey="I">索引</a></li>
+        <li class="right" >
+          <a href="todo.html" title="TODO(内部用)"
+             accesskey="N">次へ</a> |</li>
+        <li class="right" >
+          <a href="index.html" title="Effective Go"
+             accesskey="P">前へ</a> |</li>
+        <li class="nav-item nav-item-0"><a href="index.html">Effective Go  ドキュメント</a> &#187;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="introduction">
+<h1>Introduction<a class="headerlink" href="#introduction" title="このヘッドラインへのパーマリンク">¶</a></h1>
+<p>The Go memory model specifies the conditions under which reads of a
+variable in one goroutine can be guaranteed to observe values produced
+by writes to the same variable in a different goroutine.</p>
+</div>
+<div class="section" id="advice">
+<h1>Advice<a class="headerlink" href="#advice" title="このヘッドラインへのパーマリンク">¶</a></h1>
+<p>Programs that modify data being simultaneously accessed by multiple
+goroutines must serialize such access.</p>
+<p>To serialize access, protect the data with channel operations or other
+synchronization primitives such as those in the
+<code class="docutils literal notranslate"><span class="pre">`sync</span></code> &lt;/pkg/sync/&gt;`__ and <code class="docutils literal notranslate"><span class="pre">`sync/atomic</span></code> &lt;/pkg/sync/atomic/&gt;`__
+packages.</p>
+<p>If you must read the rest of this document to understand the behavior of
+your program, you are being too clever.</p>
+<p>Don't be clever.</p>
+</div>
+<div class="section" id="happens-before">
+<h1>Happens Before<a class="headerlink" href="#happens-before" title="このヘッドラインへのパーマリンク">¶</a></h1>
+<p>Within a single goroutine, reads and writes must behave as if they
+executed in the order specified by the program. That is, compilers and
+processors may reorder the reads and writes executed within a single
+goroutine only when the reordering does not change the behavior within
+that goroutine as defined by the language specification. Because of this
+reordering, the execution order observed by one goroutine may differ
+from the order perceived by another. For example, if one goroutine
+executes <code class="docutils literal notranslate"><span class="pre">a</span> <span class="pre">=</span> <span class="pre">1;</span> <span class="pre">b</span> <span class="pre">=</span> <span class="pre">2;</span></code>, another might observe the updated value of
+<code class="docutils literal notranslate"><span class="pre">b</span></code> before the updated value of <code class="docutils literal notranslate"><span class="pre">a</span></code>.</p>
+<p>To specify the requirements of reads and writes, we define <em>happens
+before</em>, a partial order on the execution of memory operations in a Go
+program. If event e1 happens before event e2, then we say that e2
+happens after e1. Also, if e1 does not happen before e2 and does
+not happen after e2, then we say that e1 and e2 happen
+concurrently.</p>
+<p>Within a single goroutine, the happens-before order is the order
+expressed by the program.</p>
+<p>A read r of a variable <code class="docutils literal notranslate"><span class="pre">v</span></code> is <em>allowed</em> to observe a write w to <code class="docutils literal notranslate"><span class="pre">v</span></code>
+if both of the following hold:</p>
+<ol class="arabic simple">
+<li><p>r does not happen before w.</p></li>
+<li><p>There is no other write w' to <code class="docutils literal notranslate"><span class="pre">v</span></code> that happens after w but before
+r.</p></li>
+</ol>
+<p>To guarantee that a read r of a variable <code class="docutils literal notranslate"><span class="pre">v</span></code> observes a particular
+write w to <code class="docutils literal notranslate"><span class="pre">v</span></code>, ensure that w is the only write r is allowed to
+observe. That is, r is <em>guaranteed</em> to observe w if both of the
+following hold:</p>
+<ol class="arabic simple">
+<li><p>w happens before r.</p></li>
+<li><p>Any other write to the shared variable <code class="docutils literal notranslate"><span class="pre">v</span></code> either happens before w
+or after r.</p></li>
+</ol>
+<p>This pair of conditions is stronger than the first pair; it requires
+that there are no other writes happening concurrently with w or r.</p>
+<p>Within a single goroutine, there is no concurrency, so the two
+definitions are equivalent: a read r observes the value written by the
+most recent write w to <code class="docutils literal notranslate"><span class="pre">v</span></code>. When multiple goroutines access a shared
+variable <code class="docutils literal notranslate"><span class="pre">v</span></code>, they must use synchronization events to establish
+happens-before conditions that ensure reads observe the desired writes.</p>
+<p>The initialization of variable <code class="docutils literal notranslate"><span class="pre">v</span></code> with the zero value for <code class="docutils literal notranslate"><span class="pre">v</span></code>'s
+type behaves as a write in the memory model.</p>
+<p>Reads and writes of values larger than a single machine word behave as
+multiple machine-word-sized operations in an unspecified order.</p>
+</div>
+<div class="section" id="synchronization">
+<h1>Synchronization<a class="headerlink" href="#synchronization" title="このヘッドラインへのパーマリンク">¶</a></h1>
+<div class="section" id="initialization">
+<h2>Initialization<a class="headerlink" href="#initialization" title="このヘッドラインへのパーマリンク">¶</a></h2>
+<p>Program initialization runs in a single goroutine, but that goroutine
+may create other goroutines, which run concurrently.</p>
+<p>If a package <code class="docutils literal notranslate"><span class="pre">p</span></code> imports package <code class="docutils literal notranslate"><span class="pre">q</span></code>, the completion of <code class="docutils literal notranslate"><span class="pre">q</span></code>'s
+<code class="docutils literal notranslate"><span class="pre">init</span></code> functions happens before the start of any of <code class="docutils literal notranslate"><span class="pre">p</span></code>'s.</p>
+<p>The start of the function <code class="docutils literal notranslate"><span class="pre">main.main</span></code> happens after all <code class="docutils literal notranslate"><span class="pre">init</span></code>
+functions have finished.</p>
+</div>
+<div class="section" id="goroutine-creation">
+<h2>Goroutine creation<a class="headerlink" href="#goroutine-creation" title="このヘッドラインへのパーマリンク">¶</a></h2>
+<p>The <code class="docutils literal notranslate"><span class="pre">go</span></code> statement that starts a new goroutine happens before the
+goroutine's execution begins.</p>
+<p>For example, in this program:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">var</span> <span class="n">a</span> <span class="n">string</span>
+
+<span class="n">func</span> <span class="n">f</span><span class="p">()</span> <span class="p">{</span>
+    <span class="nb">print</span><span class="p">(</span><span class="n">a</span><span class="p">)</span>
+<span class="p">}</span>
+
+<span class="n">func</span> <span class="n">hello</span><span class="p">()</span> <span class="p">{</span>
+    <span class="n">a</span> <span class="o">=</span> <span class="s2">&quot;hello, world&quot;</span>
+    <span class="n">go</span> <span class="n">f</span><span class="p">()</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<p>calling <code class="docutils literal notranslate"><span class="pre">hello</span></code> will print <code class="docutils literal notranslate"><span class="pre">&quot;hello,</span> <span class="pre">world&quot;</span></code> at some point in the
+future (perhaps after <code class="docutils literal notranslate"><span class="pre">hello</span></code> has returned).</p>
+</div>
+<div class="section" id="goroutine-destruction">
+<h2>Goroutine destruction<a class="headerlink" href="#goroutine-destruction" title="このヘッドラインへのパーマリンク">¶</a></h2>
+<p>The exit of a goroutine is not guaranteed to happen before any event in
+the program. For example, in this program:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">var</span> <span class="n">a</span> <span class="n">string</span>
+
+<span class="n">func</span> <span class="n">hello</span><span class="p">()</span> <span class="p">{</span>
+    <span class="n">go</span> <span class="n">func</span><span class="p">()</span> <span class="p">{</span> <span class="n">a</span> <span class="o">=</span> <span class="s2">&quot;hello&quot;</span> <span class="p">}()</span>
+    <span class="nb">print</span><span class="p">(</span><span class="n">a</span><span class="p">)</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<p>the assignment to <code class="docutils literal notranslate"><span class="pre">a</span></code> is not followed by any synchronization event, so
+it is not guaranteed to be observed by any other goroutine. In fact, an
+aggressive compiler might delete the entire <code class="docutils literal notranslate"><span class="pre">go</span></code> statement.</p>
+<p>If the effects of a goroutine must be observed by another goroutine, use
+a synchronization mechanism such as a lock or channel communication to
+establish a relative ordering.</p>
+</div>
+<div class="section" id="channel-communication">
+<h2>Channel communication<a class="headerlink" href="#channel-communication" title="このヘッドラインへのパーマリンク">¶</a></h2>
+<p>Channel communication is the main method of synchronization between
+goroutines. Each send on a particular channel is matched to a
+corresponding receive from that channel, usually in a different
+goroutine.</p>
+<p>A send on a channel happens before the corresponding receive from that
+channel completes.</p>
+<p>This program:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">var</span> <span class="n">c</span> <span class="o">=</span> <span class="n">make</span><span class="p">(</span><span class="n">chan</span> <span class="nb">int</span><span class="p">,</span> <span class="mi">10</span><span class="p">)</span>
+<span class="n">var</span> <span class="n">a</span> <span class="n">string</span>
+
+<span class="n">func</span> <span class="n">f</span><span class="p">()</span> <span class="p">{</span>
+    <span class="n">a</span> <span class="o">=</span> <span class="s2">&quot;hello, world&quot;</span>
+    <span class="n">c</span> <span class="o">&lt;-</span> <span class="mi">0</span>
+<span class="p">}</span>
+
+<span class="n">func</span> <span class="n">main</span><span class="p">()</span> <span class="p">{</span>
+    <span class="n">go</span> <span class="n">f</span><span class="p">()</span>
+    <span class="o">&lt;-</span><span class="n">c</span>
+    <span class="nb">print</span><span class="p">(</span><span class="n">a</span><span class="p">)</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<p>is guaranteed to print <code class="docutils literal notranslate"><span class="pre">&quot;hello,</span> <span class="pre">world&quot;</span></code>. The write to <code class="docutils literal notranslate"><span class="pre">a</span></code> happens
+before the send on <code class="docutils literal notranslate"><span class="pre">c</span></code>, which happens before the corresponding receive
+on <code class="docutils literal notranslate"><span class="pre">c</span></code> completes, which happens before the <code class="docutils literal notranslate"><span class="pre">print</span></code>.</p>
+<p>The closing of a channel happens before a receive that returns a zero
+value because the channel is closed.</p>
+<p>In the previous example, replacing <code class="docutils literal notranslate"><span class="pre">c</span> <span class="pre">&lt;-</span> <span class="pre">0</span></code> with <code class="docutils literal notranslate"><span class="pre">close(c)</span></code> yields a
+program with the same guaranteed behavior.</p>
+<p>A receive from an unbuffered channel happens before the send on that
+channel completes.</p>
+<p>This program (as above, but with the send and receive statements swapped
+and using an unbuffered channel):</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">var</span> <span class="n">c</span> <span class="o">=</span> <span class="n">make</span><span class="p">(</span><span class="n">chan</span> <span class="nb">int</span><span class="p">)</span>
+<span class="n">var</span> <span class="n">a</span> <span class="n">string</span>
+
+<span class="n">func</span> <span class="n">f</span><span class="p">()</span> <span class="p">{</span>
+    <span class="n">a</span> <span class="o">=</span> <span class="s2">&quot;hello, world&quot;</span>
+    <span class="o">&lt;-</span><span class="n">c</span>
+<span class="p">}</span>
+
+<span class="n">func</span> <span class="n">main</span><span class="p">()</span> <span class="p">{</span>
+    <span class="n">go</span> <span class="n">f</span><span class="p">()</span>
+    <span class="n">c</span> <span class="o">&lt;-</span> <span class="mi">0</span>
+    <span class="nb">print</span><span class="p">(</span><span class="n">a</span><span class="p">)</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<p>is also guaranteed to print <code class="docutils literal notranslate"><span class="pre">&quot;hello,</span> <span class="pre">world&quot;</span></code>. The write to <code class="docutils literal notranslate"><span class="pre">a</span></code>
+happens before the receive on <code class="docutils literal notranslate"><span class="pre">c</span></code>, which happens before the
+corresponding send on <code class="docutils literal notranslate"><span class="pre">c</span></code> completes, which happens before the
+<code class="docutils literal notranslate"><span class="pre">print</span></code>.</p>
+<p>If the channel were buffered (e.g., <code class="docutils literal notranslate"><span class="pre">c</span> <span class="pre">=</span> <span class="pre">make(chan</span> <span class="pre">int,</span> <span class="pre">1)</span></code>) then the
+program would not be guaranteed to print <code class="docutils literal notranslate"><span class="pre">&quot;hello,</span> <span class="pre">world&quot;</span></code>. (It might
+print the empty string, crash, or do something else.)</p>
+<p>The <em>k</em>th receive on a channel with capacity <em>C</em> happens before the
+<em>k</em>+<em>C</em>th send from that channel completes.</p>
+<p>This rule generalizes the previous rule to buffered channels. It allows
+a counting semaphore to be modeled by a buffered channel: the number of
+items in the channel corresponds to the number of active uses, the
+capacity of the channel corresponds to the maximum number of
+simultaneous uses, sending an item acquires the semaphore, and receiving
+an item releases the semaphore. This is a common idiom for limiting
+concurrency.</p>
+<p>This program starts a goroutine for every entry in the work list, but
+the goroutines coordinate using the <code class="docutils literal notranslate"><span class="pre">limit</span></code> channel to ensure that at
+most three are running work functions at a time.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">var</span> <span class="n">limit</span> <span class="o">=</span> <span class="n">make</span><span class="p">(</span><span class="n">chan</span> <span class="nb">int</span><span class="p">,</span> <span class="mi">3</span><span class="p">)</span>
+
+<span class="n">func</span> <span class="n">main</span><span class="p">()</span> <span class="p">{</span>
+    <span class="k">for</span> <span class="n">_</span><span class="p">,</span> <span class="n">w</span> <span class="o">:=</span> <span class="nb">range</span> <span class="n">work</span> <span class="p">{</span>
+        <span class="n">go</span> <span class="n">func</span><span class="p">(</span><span class="n">w</span> <span class="n">func</span><span class="p">())</span> <span class="p">{</span>
+            <span class="n">limit</span> <span class="o">&lt;-</span> <span class="mi">1</span>
+            <span class="n">w</span><span class="p">()</span>
+            <span class="o">&lt;-</span><span class="n">limit</span>
+        <span class="p">}(</span><span class="n">w</span><span class="p">)</span>
+    <span class="p">}</span>
+    <span class="n">select</span><span class="p">{}</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="locks">
+<h2>Locks<a class="headerlink" href="#locks" title="このヘッドラインへのパーマリンク">¶</a></h2>
+<p>The <code class="docutils literal notranslate"><span class="pre">sync</span></code> package implements two lock data types, <code class="docutils literal notranslate"><span class="pre">sync.Mutex</span></code> and
+<code class="docutils literal notranslate"><span class="pre">sync.RWMutex</span></code>.</p>
+<p>For any <code class="docutils literal notranslate"><span class="pre">sync.Mutex</span></code> or <code class="docutils literal notranslate"><span class="pre">sync.RWMutex</span></code> variable <code class="docutils literal notranslate"><span class="pre">l</span></code> and <em>n</em> &lt; <em>m</em>,
+call <em>n</em> of <code class="docutils literal notranslate"><span class="pre">l.Unlock()</span></code> happens before call <em>m</em> of <code class="docutils literal notranslate"><span class="pre">l.Lock()</span></code>
+returns.</p>
+<p>This program:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">var</span> <span class="n">l</span> <span class="n">sync</span><span class="o">.</span><span class="n">Mutex</span>
+<span class="n">var</span> <span class="n">a</span> <span class="n">string</span>
+
+<span class="n">func</span> <span class="n">f</span><span class="p">()</span> <span class="p">{</span>
+    <span class="n">a</span> <span class="o">=</span> <span class="s2">&quot;hello, world&quot;</span>
+    <span class="n">l</span><span class="o">.</span><span class="n">Unlock</span><span class="p">()</span>
+<span class="p">}</span>
+
+<span class="n">func</span> <span class="n">main</span><span class="p">()</span> <span class="p">{</span>
+    <span class="n">l</span><span class="o">.</span><span class="n">Lock</span><span class="p">()</span>
+    <span class="n">go</span> <span class="n">f</span><span class="p">()</span>
+    <span class="n">l</span><span class="o">.</span><span class="n">Lock</span><span class="p">()</span>
+    <span class="nb">print</span><span class="p">(</span><span class="n">a</span><span class="p">)</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<p>is guaranteed to print <code class="docutils literal notranslate"><span class="pre">&quot;hello,</span> <span class="pre">world&quot;</span></code>. The first call to
+<code class="docutils literal notranslate"><span class="pre">l.Unlock()</span></code> (in <code class="docutils literal notranslate"><span class="pre">f</span></code>) happens before the second call to <code class="docutils literal notranslate"><span class="pre">l.Lock()</span></code>
+(in <code class="docutils literal notranslate"><span class="pre">main</span></code>) returns, which happens before the <code class="docutils literal notranslate"><span class="pre">print</span></code>.</p>
+<p>For any call to <code class="docutils literal notranslate"><span class="pre">l.RLock</span></code> on a <code class="docutils literal notranslate"><span class="pre">sync.RWMutex</span></code> variable <code class="docutils literal notranslate"><span class="pre">l</span></code>, there
+is an <em>n</em> such that the <code class="docutils literal notranslate"><span class="pre">l.RLock</span></code> happens (returns) after call <em>n</em> to
+<code class="docutils literal notranslate"><span class="pre">l.Unlock</span></code> and the matching <code class="docutils literal notranslate"><span class="pre">l.RUnlock</span></code> happens before call <em>n</em>+1
+to <code class="docutils literal notranslate"><span class="pre">l.Lock</span></code>.</p>
+</div>
+<div class="section" id="once">
+<h2>Once<a class="headerlink" href="#once" title="このヘッドラインへのパーマリンク">¶</a></h2>
+<p>The <code class="docutils literal notranslate"><span class="pre">sync</span></code> package provides a safe mechanism for initialization in the
+presence of multiple goroutines through the use of the <code class="docutils literal notranslate"><span class="pre">Once</span></code> type.
+Multiple threads can execute <code class="docutils literal notranslate"><span class="pre">once.Do(f)</span></code> for a particular <code class="docutils literal notranslate"><span class="pre">f</span></code>, but
+only one will run <code class="docutils literal notranslate"><span class="pre">f()</span></code>, and the other calls block until <code class="docutils literal notranslate"><span class="pre">f()</span></code> has
+returned.</p>
+<p>A single call of <code class="docutils literal notranslate"><span class="pre">f()</span></code> from <code class="docutils literal notranslate"><span class="pre">once.Do(f)</span></code> happens (returns) before
+any call of <code class="docutils literal notranslate"><span class="pre">once.Do(f)</span></code> returns.</p>
+<p>In this program:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">var</span> <span class="n">a</span> <span class="n">string</span>
+<span class="n">var</span> <span class="n">once</span> <span class="n">sync</span><span class="o">.</span><span class="n">Once</span>
+
+<span class="n">func</span> <span class="n">setup</span><span class="p">()</span> <span class="p">{</span>
+    <span class="n">a</span> <span class="o">=</span> <span class="s2">&quot;hello, world&quot;</span>
+<span class="p">}</span>
+
+<span class="n">func</span> <span class="n">doprint</span><span class="p">()</span> <span class="p">{</span>
+    <span class="n">once</span><span class="o">.</span><span class="n">Do</span><span class="p">(</span><span class="n">setup</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="n">a</span><span class="p">)</span>
+<span class="p">}</span>
+
+<span class="n">func</span> <span class="n">twoprint</span><span class="p">()</span> <span class="p">{</span>
+    <span class="n">go</span> <span class="n">doprint</span><span class="p">()</span>
+    <span class="n">go</span> <span class="n">doprint</span><span class="p">()</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<p>calling <code class="docutils literal notranslate"><span class="pre">twoprint</span></code> will call <code class="docutils literal notranslate"><span class="pre">setup</span></code> exactly once. The <code class="docutils literal notranslate"><span class="pre">setup</span></code>
+function will complete before either call of <code class="docutils literal notranslate"><span class="pre">print</span></code>. The result will
+be that <code class="docutils literal notranslate"><span class="pre">&quot;hello,</span> <span class="pre">world&quot;</span></code> will be printed twice.</p>
+</div>
+</div>
+<div class="section" id="incorrect-synchronization">
+<h1>Incorrect synchronization<a class="headerlink" href="#incorrect-synchronization" title="このヘッドラインへのパーマリンク">¶</a></h1>
+<p>Note that a read r may observe the value written by a write w that
+happens concurrently with r. Even if this occurs, it does not imply that
+reads happening after r will observe writes that happened before w.</p>
+<p>In this program:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">var</span> <span class="n">a</span><span class="p">,</span> <span class="n">b</span> <span class="nb">int</span>
+
+<span class="n">func</span> <span class="n">f</span><span class="p">()</span> <span class="p">{</span>
+    <span class="n">a</span> <span class="o">=</span> <span class="mi">1</span>
+    <span class="n">b</span> <span class="o">=</span> <span class="mi">2</span>
+<span class="p">}</span>
+
+<span class="n">func</span> <span class="n">g</span><span class="p">()</span> <span class="p">{</span>
+    <span class="nb">print</span><span class="p">(</span><span class="n">b</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="n">a</span><span class="p">)</span>
+<span class="p">}</span>
+
+<span class="n">func</span> <span class="n">main</span><span class="p">()</span> <span class="p">{</span>
+    <span class="n">go</span> <span class="n">f</span><span class="p">()</span>
+    <span class="n">g</span><span class="p">()</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<p>it can happen that <code class="docutils literal notranslate"><span class="pre">g</span></code> prints <code class="docutils literal notranslate"><span class="pre">2</span></code> and then <code class="docutils literal notranslate"><span class="pre">0</span></code>.</p>
+<p>This fact invalidates a few common idioms.</p>
+<p>Double-checked locking is an attempt to avoid the overhead of
+synchronization. For example, the <code class="docutils literal notranslate"><span class="pre">twoprint</span></code> program might be
+incorrectly written as:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>var a string
+var done bool
+
+func setup() {
+    a = &quot;hello, world&quot;
+    done = true
+}
+
+func doprint() {
+    if !done {
+        once.Do(setup)
+    }
+    print(a)
+}
+
+func twoprint() {
+    go doprint()
+    go doprint()
+}
+</pre></div>
+</div>
+<p>but there is no guarantee that, in <code class="docutils literal notranslate"><span class="pre">doprint</span></code>, observing the write to
+<code class="docutils literal notranslate"><span class="pre">done</span></code> implies observing the write to <code class="docutils literal notranslate"><span class="pre">a</span></code>. This version can
+(incorrectly) print an empty string instead of <code class="docutils literal notranslate"><span class="pre">&quot;hello,</span> <span class="pre">world&quot;</span></code>.</p>
+<p>Another incorrect idiom is busy waiting for a value, as in:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>var a string
+var done bool
+
+func setup() {
+    a = &quot;hello, world&quot;
+    done = true
+}
+
+func main() {
+    go setup()
+    for !done {
+    }
+    print(a)
+}
+</pre></div>
+</div>
+<p>As before, there is no guarantee that, in <code class="docutils literal notranslate"><span class="pre">main</span></code>, observing the write
+to <code class="docutils literal notranslate"><span class="pre">done</span></code> implies observing the write to <code class="docutils literal notranslate"><span class="pre">a</span></code>, so this program could
+print an empty string too. Worse, there is no guarantee that the write
+to <code class="docutils literal notranslate"><span class="pre">done</span></code> will ever be observed by <code class="docutils literal notranslate"><span class="pre">main</span></code>, since there are no
+synchronization events between the two threads. The loop in <code class="docutils literal notranslate"><span class="pre">main</span></code> is
+not guaranteed to finish.</p>
+<p>There are subtler variants on this theme, such as this program.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nb">type</span> <span class="n">T</span> <span class="n">struct</span> <span class="p">{</span>
+    <span class="n">msg</span> <span class="n">string</span>
+<span class="p">}</span>
+
+<span class="n">var</span> <span class="n">g</span> <span class="o">*</span><span class="n">T</span>
+
+<span class="n">func</span> <span class="n">setup</span><span class="p">()</span> <span class="p">{</span>
+    <span class="n">t</span> <span class="o">:=</span> <span class="n">new</span><span class="p">(</span><span class="n">T</span><span class="p">)</span>
+    <span class="n">t</span><span class="o">.</span><span class="n">msg</span> <span class="o">=</span> <span class="s2">&quot;hello, world&quot;</span>
+    <span class="n">g</span> <span class="o">=</span> <span class="n">t</span>
+<span class="p">}</span>
+
+<span class="n">func</span> <span class="n">main</span><span class="p">()</span> <span class="p">{</span>
+    <span class="n">go</span> <span class="n">setup</span><span class="p">()</span>
+    <span class="k">for</span> <span class="n">g</span> <span class="o">==</span> <span class="n">nil</span> <span class="p">{</span>
+    <span class="p">}</span>
+    <span class="nb">print</span><span class="p">(</span><span class="n">g</span><span class="o">.</span><span class="n">msg</span><span class="p">)</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<p>Even if <code class="docutils literal notranslate"><span class="pre">main</span></code> observes <code class="docutils literal notranslate"><span class="pre">g</span> <span class="pre">!=</span> <span class="pre">nil</span></code> and exits its loop, there is no
+guarantee that it will observe the initialized value for <code class="docutils literal notranslate"><span class="pre">g.msg</span></code>.</p>
+<p>In all these examples, the solution is the same: use explicit
+synchronization.</p>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+  <h3><a href="index.html">目次</a></h3>
+  <ul>
+<li><a class="reference internal" href="#">Introduction</a></li>
+<li><a class="reference internal" href="#advice">Advice</a></li>
+<li><a class="reference internal" href="#happens-before">Happens Before</a></li>
+<li><a class="reference internal" href="#synchronization">Synchronization</a><ul>
+<li><a class="reference internal" href="#initialization">Initialization</a></li>
+<li><a class="reference internal" href="#goroutine-creation">Goroutine creation</a></li>
+<li><a class="reference internal" href="#goroutine-destruction">Goroutine destruction</a></li>
+<li><a class="reference internal" href="#channel-communication">Channel communication</a></li>
+<li><a class="reference internal" href="#locks">Locks</a></li>
+<li><a class="reference internal" href="#once">Once</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#incorrect-synchronization">Incorrect synchronization</a></li>
+</ul>
+
+  <h4>前のトピックへ</h4>
+  <p class="topless"><a href="index.html"
+                        title="前の章へ">Effective Go</a></p>
+  <h4>次のトピックへ</h4>
+  <p class="topless"><a href="todo.html"
+                        title="次の章へ">TODO(内部用)</a></p>
+  <div role="note" aria-label="source link">
+    <h3>このページ</h3>
+    <ul class="this-page-menu">
+      <li><a href="_sources/go_mem.rst.txt"
+            rel="nofollow">ソースコードを表示</a></li>
+    </ul>
+   </div><div>
+    <h4>Page Info</h4>
+    <p>
+        <ul>
+            <li>英数記号: 8417</li>
+            <li>非アスキー: 0</li>
+            <li>合計文字数: 8417</li>
+            <li>半角換算: 8417</li>
+            <li>全角換算: 4208.5</li>
+        </ul>
+    </p>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">クイック検索</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" />
+      <input type="submit" value="検索" />
+    </form>
+    </div>
+</div>
+<script>$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>ナビゲーション</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="総合索引"
+             >索引</a></li>
+        <li class="right" >
+          <a href="todo.html" title="TODO(内部用)"
+             >次へ</a> |</li>
+        <li class="right" >
+          <a href="index.html" title="Effective Go"
+             >前へ</a> |</li>
+        <li class="nav-item nav-item-0"><a href="index.html">Effective Go  ドキュメント</a> &#187;</li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2020, d-tsuji.
+      このドキュメントは <a href="http://sphinx-doc.org/">Sphinx</a> 2.4.4 で生成しました。
+    </div>
+  </body>
+</html>
