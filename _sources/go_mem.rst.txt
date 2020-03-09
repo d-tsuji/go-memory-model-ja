@@ -1,79 +1,47 @@
 Introduction
 ------------
 
-The Go memory model specifies the conditions under which reads of a
-variable in one goroutine can be guaranteed to observe values produced
-by writes to the same variable in a different goroutine.
+Goのメモリモデルは、ある変数に対して、あるゴルーチンから変数に書き込みされた値を、別のゴルーチンが参照できることを保証する条件を示します。
 
 Advice
 ------
 
-Programs that modify data being simultaneously accessed by multiple
-goroutines must serialize such access.
+複数のゴルーチンによって同時にアクセスされるデータを変更するプログラムは、シリアルにアクセスする必要があります。
 
-To serialize access, protect the data with channel operations or other
-synchronization primitives such as those in the
-```sync`` </pkg/sync/>`__ and ```sync/atomic`` </pkg/sync/atomic/>`__
-packages.
+アクセスをシリアル化するには、チャネルや ``sync`` パッケージや ``sync/atomic`` パッケージといった同期プリミティブを用いてデータを保護する必要があります。
 
-If you must read the rest of this document to understand the behavior of
-your program, you are being too clever.
+プログラムの動作を理解するためにこのドキュメントの残りを読む必要がある場合は、あまりにも賢いです。
 
-Don't be clever.
+プログラムの振る舞いを理解するために本ドキュメントを読むことは、十分に役に立ちます。
+
+.. todo:: Don't be clever.(どういう意味?)
 
 Happens Before
 --------------
 
-Within a single goroutine, reads and writes must behave as if they
-executed in the order specified by the program. That is, compilers and
-processors may reorder the reads and writes executed within a single
-goroutine only when the reordering does not change the behavior within
-that goroutine as defined by the language specification. Because of this
-reordering, the execution order observed by one goroutine may differ
-from the order perceived by another. For example, if one goroutine
-executes ``a = 1; b = 2;``, another might observe the updated value of
-``b`` before the updated value of ``a``.
+1つのゴルーチン内で、読み取りと書き込みは、プログラムで指定された順序で実行されたかのように動作する必要があります。 つまり、コンパイラとプロセッサは、リオーダーによって言語仕様で定義されているようなゴルーチンの振る舞いを変えることがない場合に限り、単一のゴルーチンで実行された読み書きをリオーダーすることができます。リオーダーのため、あるゴルーチンで観測される実行順序は、別のゴルーチンで認識される順序と異なる場合があります。例えば、あるゴルーチンが ``a = 1; b = 2;`` と実行するとき、別のゴルーチンは ``a`` の値が更新される前に ``b`` の値が更新されていることを観測するかもしれません。
 
-To specify the requirements of reads and writes, we define *happens
-before*, a partial order on the execution of memory operations in a Go
-program. If event e\ 1 happens before event e\ 2, then we say that e\ 2
-happens after e\ 1. Also, if e\ 1 does not happen before e\ 2 and does
-not happen after e\ 2, then we say that e\ 1 and e\ 2 happen
-concurrently.
+読み取りと書き込みの要件を指定するために、Goのプログラムでのメモリ操作の実行に関する半順序関係を定義します。 イベントe1がイベントe2の前に発生する場合、e2はe1の後に発生すると言います。 また、e1がe2の前に発生せず、e2の後に発生しない場合、e1とe2は同時に発生します。
 
-Within a single goroutine, the happens-before order is the order
-expressed by the program.
+単一のゴルーチン内では、半順序関係はプログラムによって表される順序です。
 
-A read r of a variable ``v`` is *allowed* to observe a write w to ``v``
-if both of the following hold:
+``v`` への更新 ``w`` を変数 ``v`` の参照 ``r`` が認識できるのは次の両方が成り立つ場合です。
 
-#. r does not happen before w.
-#. There is no other write w' to ``v`` that happens after w but before
-   r.
+#. w は r の前に発生する
+#. w の後に r の前に ``v`` に対する別の更新 w' がない
 
-To guarantee that a read r of a variable ``v`` observes a particular
-write w to ``v``, ensure that w is the only write r is allowed to
-observe. That is, r is *guaranteed* to observe w if both of the
-following hold:
+変数 ``v`` の参照 r が v への特定の更新 w を認識することを保証するには、r が認識できる更新が w のみであることを確実にする必要があります。つまり、次の両方が成り立つ場合、 r は w を認識できることが保証されます。
 
-#. w happens before r.
-#. Any other write to the shared variable ``v`` either happens before w
-   or after r.
+#. r の前に w が発生する
+#. 共有変数 ``v`` への任意の更新が w の前に発生するか r の後に発生する
 
-This pair of conditions is stronger than the first pair; it requires
-that there are no other writes happening concurrently with w or r.
+この条件のペアは、最初のペアよりも強力です。 w または r と同時に発生する他の更新がないことが必要です。
 
-Within a single goroutine, there is no concurrency, so the two
-definitions are equivalent: a read r observes the value written by the
-most recent write w to ``v``. When multiple goroutines access a shared
-variable ``v``, they must use synchronization events to establish
-happens-before conditions that ensure reads observe the desired writes.
+単一のゴルーチン内では、同時実行性がないため、2つの定義は同等です。参照 r は、v への最新の更新 w によって更新された値を認識します。複数のゴルーチンが共有変数 v にアクセスする場合、必ず同期イベントを使用して、望ましい更新結果を参照が確実に認識するよう半順序関係の条件を成立させる必要があります。
 
-The initialization of variable ``v`` with the zero value for ``v``'s
-type behaves as a write in the memory model.
+v の型のゼロ値を用いて変数 v を初期化する場合は、メモリモデルの中では更新として動作します。
 
-Reads and writes of values larger than a single machine word behave as
-multiple machine-word-sized operations in an unspecified order.
+そのマシンの一語より大きい値の参照および更新は、順不同の複数のマシンワードサイズの処理として振舞います。
 
 Synchronization
 ---------------
@@ -81,45 +49,39 @@ Synchronization
 Initialization
 ~~~~~~~~~~~~~~
 
-Program initialization runs in a single goroutine, but that goroutine
-may create other goroutines, which run concurrently.
+プログラムの初期化は単一のゴルーチンで実行されますが、そのゴルーチンは同時に実行される別のゴルーチンを作成することがあります。
 
-If a package ``p`` imports package ``q``, the completion of ``q``'s
-``init`` functions happens before the start of any of ``p``'s.
+パッケージ p がパッケージ q をインポートする場合、 q の init 関数は、任意の p の開始よりも前に完了します。
 
-The start of the function ``main.main`` happens after all ``init``
-functions have finished.
+関数 ``main.main`` の開始は、すべての ``init`` 関数が完了した後に発生します。
 
 Goroutine creation
 ~~~~~~~~~~~~~~~~~~
 
-The ``go`` statement that starts a new goroutine happens before the
-goroutine's execution begins.
+新しいゴルーチンを開始する ``go`` ステートメントは、ゴルーチンの実行が始まる前に発生します。
 
-For example, in this program:
+例として次のプログラムを見てみます。
 
-::
+.. code-block:: go
 
-       var a string
-       
-       func f() {
-           print(a)
-       }
-       
-       func hello() {
-           a = "hello, world"
-           go f()
-       }
-       
+    var a string
+    
+    func f() {
+        print(a)
+    }
+    
+    func hello() {
+        a = "hello, world"
+        go f()
+    }
 
-calling ``hello`` will print ``"hello, world"`` at some point in the
-future (perhaps after ``hello`` has returned).
+
+``hello`` を呼び出すと、未来のある時点(おそらく ``hello`` が戻った後)で「hello、world」が出力されます。
 
 Goroutine destruction
 ~~~~~~~~~~~~~~~~~~~~~
 
-The exit of a goroutine is not guaranteed to happen before any event in
-the program. For example, in this program:
+ゴルーチンの終了は、プログラム内のイベントの前に発生することが保証されていません。例として以下のプログラムを見てみます。
 
 ::
 
@@ -131,13 +93,9 @@ the program. For example, in this program:
        }
        
 
-the assignment to ``a`` is not followed by any synchronization event, so
-it is not guaranteed to be observed by any other goroutine. In fact, an
-aggressive compiler might delete the entire ``go`` statement.
+a への割り当ての後に同期イベントが続くことはないため、他のゴルーチンによって認識されることは保証されません。実際、意欲的なコンパイラーは ``go`` ステートメント全体を削除する場合があります。
 
-If the effects of a goroutine must be observed by another goroutine, use
-a synchronization mechanism such as a lock or channel communication to
-establish a relative ordering.
+ゴルーチンの影響を別のゴルーチンで観察する必要がある場合は、ロックやチャネル通信などの同期メカニズムを使用して、相対的な順序を確立します。
 
 Channel communication
 ~~~~~~~~~~~~~~~~~~~~~
