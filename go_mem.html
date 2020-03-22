@@ -45,20 +45,16 @@
 </div>
 <div class="section" id="advice">
 <h1>Advice<a class="headerlink" href="#advice" title="このヘッドラインへのパーマリンク">¶</a></h1>
-<p>複数のゴルーチンによって同時にアクセスされるデータを変更するプログラムは、シリアルにアクセスする必要があります。</p>
-<p>アクセスをシリアル化するには、チャネルや <code class="docutils literal notranslate"><span class="pre">sync</span></code> パッケージや <code class="docutils literal notranslate"><span class="pre">sync/atomic</span></code> パッケージといった同期プリミティブを用いてデータを保護する必要があります。</p>
-<p>プログラムの動作を理解するためにこのドキュメントの残りを読む必要がある場合は、あまりにも賢いです。</p>
-<p>プログラムの振る舞いを理解するために本ドキュメントを読むことは、十分に役に立ちます。</p>
-<div class="admonition-todo admonition" id="id1">
-<p class="admonition-title">課題</p>
-<p>Don't be clever.(どういう意味?)</p>
-</div>
+<p>複数のゴルーチンによって同時にアクセスされるデータを変更するプログラムは、そのようなアクセスを逐次化する必要があります。</p>
+<p>アクセスを逐次化するには、チャネルや <code class="docutils literal notranslate"><span class="pre">sync</span></code> パッケージや <code class="docutils literal notranslate"><span class="pre">sync/atomic</span></code> パッケージといった同期プリミティブを用いてデータを保護してください。</p>
+<p>プログラムの動作を理解するためにこのドキュメントの残りの部分を読まなければならないのであれば、あなたは賢くなりすぎています。</p>
+<p>賢くならないでください。</p>
 </div>
 <div class="section" id="happens-before">
 <h1>Happens Before<a class="headerlink" href="#happens-before" title="このヘッドラインへのパーマリンク">¶</a></h1>
 <p>1つのゴルーチン内で、読み取りと書き込みは、プログラムで指定された順序で実行されたかのように動作する必要があります。 つまり、コンパイラとプロセッサは、リオーダーによって言語仕様で定義されているようなゴルーチンの振る舞いを変えることがない場合に限り、単一のゴルーチンで実行された読み書きをリオーダーすることができます。リオーダーのため、あるゴルーチンで観測される実行順序は、別のゴルーチンで認識される順序と異なる場合があります。例えば、あるゴルーチンが <code class="docutils literal notranslate"><span class="pre">a</span> <span class="pre">=</span> <span class="pre">1;</span> <span class="pre">b</span> <span class="pre">=</span> <span class="pre">2;</span></code> と実行するとき、別のゴルーチンは <code class="docutils literal notranslate"><span class="pre">a</span></code> の値が更新される前に <code class="docutils literal notranslate"><span class="pre">b</span></code> の値が更新されていることを観測するかもしれません。</p>
 <p>読み取りと書き込みの要件を指定するために、Goのプログラムでのメモリ操作の実行に関する半順序関係を定義します。 イベントe1がイベントe2の前に発生する場合、e2はe1の後に発生すると言います。 また、e1がe2の前に発生せず、e2の後に発生しない場合、e1とe2は同時に発生します。</p>
-<p>単一のゴルーチン内では、半順序関係はプログラムによって表される順序です。</p>
+<p>単一のゴルーチン内では、happens-before はプログラムによって表される順序です。</p>
 <p><code class="docutils literal notranslate"><span class="pre">v</span></code> への更新 <code class="docutils literal notranslate"><span class="pre">w</span></code> を変数 <code class="docutils literal notranslate"><span class="pre">v</span></code> の参照 <code class="docutils literal notranslate"><span class="pre">r</span></code> が認識できるのは次の両方が成り立つ場合です。</p>
 <ol class="arabic simple">
 <li><p>w は r の前に発生する</p></li>
@@ -70,9 +66,9 @@
 <li><p>共有変数 <code class="docutils literal notranslate"><span class="pre">v</span></code> への任意の更新が w の前に発生するか r の後に発生する</p></li>
 </ol>
 <p>この条件のペアは、最初のペアよりも強力です。 w または r と同時に発生する他の更新がないことが必要です。</p>
-<p>単一のゴルーチン内では、同時実行性がないため、2つの定義は同等です。参照 r は、v への最新の更新 w によって更新された値を認識します。複数のゴルーチンが共有変数 v にアクセスする場合、必ず同期イベントを使用して、望ましい更新結果を参照が確実に認識するよう半順序関係の条件を成立させる必要があります。</p>
-<p>v の型のゼロ値を用いて変数 v を初期化する場合は、メモリモデルの中では更新として動作します。</p>
-<p>そのマシンの一語より大きい値の参照および更新は、順不同の複数のマシンワードサイズの処理として振舞います。</p>
+<p>単一のゴルーチン内では、同時実行性がないため、2つの定義は同等です。参照 r は、v への最新の更新 w によって更新された値を認識します。複数のゴルーチンが共有変数 v にアクセスする場合、必ず同期イベントを使用して、望ましい更新結果を参照が確実に認識するようhappens-before の条件を成立させる必要があります。</p>
+<p>v の型のゼロ値を用いて変数 v を初期化する場合は、メモリモデルの中では書き込みとして動作します。</p>
+<p>1つのマシンワードよりも大きな値の読み取りと書き込みは、不特定の順序で複数のマシンワードサイズの操作として動作します。</p>
 </div>
 <div class="section" id="synchronization">
 <h1>同期(Synchronization)<a class="headerlink" href="#synchronization" title="このヘッドラインへのパーマリンク">¶</a></h1>
@@ -350,11 +346,11 @@ func main() {
     <h4>Page Info</h4>
     <p>
         <ul>
-            <li>英数記号: 976</li>
-            <li>非アスキー: 3505</li>
-            <li>合計文字数: 4481</li>
-            <li>半角換算: 7986</li>
-            <li>全角換算: 3993.0</li>
+            <li>英数記号: 988</li>
+            <li>非アスキー: 3477</li>
+            <li>合計文字数: 4465</li>
+            <li>半角換算: 7942</li>
+            <li>全角換算: 3971.0</li>
         </ul>
     </p>
 </div>
