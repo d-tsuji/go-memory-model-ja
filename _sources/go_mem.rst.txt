@@ -43,11 +43,11 @@ v の型のゼロ値を用いて変数 v を初期化する場合は、メモリ
 
 そのマシンの一語より大きい値の参照および更新は、順不同の複数のマシンワードサイズの処理として振舞います。
 
-Synchronization
----------------
+同期(Synchronization)
+------------------------------
 
-Initialization
-~~~~~~~~~~~~~~
+初期化(Initialization)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 プログラムの初期化は単一のゴルーチンで実行されますが、そのゴルーチンは同時に実行される別のゴルーチンを作成することがあります。
 
@@ -55,8 +55,8 @@ Initialization
 
 関数 ``main.main`` の開始は、すべての ``init`` 関数が完了した後に発生します。
 
-Goroutine creation
-~~~~~~~~~~~~~~~~~~
+ゴルーチンの生成(Goroutine creation)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 新しいゴルーチンを開始する ``go`` ステートメントは、ゴルーチンの実行が始まる前に発生します。
 
@@ -78,8 +78,8 @@ Goroutine creation
 
 ``hello`` を呼び出すと、未来のある時点(おそらく ``hello`` が戻った後)で「hello、world」が出力されます。
 
-Goroutine destruction
-~~~~~~~~~~~~~~~~~~~~~
+ゴルーチンの破壊(Goroutine destruction)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 ゴルーチンの終了は、プログラム内のイベントの前に発生することが保証されていません。例として以下のプログラムを見てみます。
 
@@ -97,18 +97,14 @@ a への割り当ての後に同期イベントが続くことはないため、
 
 ゴルーチンの影響を別のゴルーチンで観察する必要がある場合は、ロックやチャネル通信などの同期メカニズムを使用して、相対的な順序を確立します。
 
-Channel communication
-~~~~~~~~~~~~~~~~~~~~~
+チャネル通信(Channel communication)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Channel communication is the main method of synchronization between
-goroutines. Each send on a particular channel is matched to a
-corresponding receive from that channel, usually in a different
-goroutine.
+チャネル通信は、ゴルーチンを同期させる主な方法です。特定のチャネルでのそれぞれの送信は、そのチャネルからの対応する受信と関連しており、通常は別のゴルーチンで行われます。
 
-A send on a channel happens before the corresponding receive from that
-channel completes.
+あるチャネルでの送信は、そのチャネルからの対応する受信が完了する前に行われます。
 
-This program:
+以下の例です。
 
 ::
 
@@ -127,21 +123,15 @@ This program:
        }
        
 
-is guaranteed to print ``"hello, world"``. The write to ``a`` happens
-before the send on ``c``, which happens before the corresponding receive
-on ``c`` completes, which happens before the ``print``.
+これは "hello, world" と表示されることが保証されています。a への書き込みは、c への送信の前に行われ、対応する c への受信が完了する前に行われ、Print の前に行われます。
 
-The closing of a channel happens before a receive that returns a zero
-value because the channel is closed.
+チャネルのクローズは、チャネルがクローズされているため、ゼロ値を返す受信の前に起こります。
 
-In the previous example, replacing ``c <- 0`` with ``close(c)`` yields a
-program with the same guaranteed behavior.
+前の例では、c <- 0 を close(c) に置き換えると、同じ動作が保証されたプログラムが得られます。
 
-A receive from an unbuffered channel happens before the send on that
-channel completes.
+バッファリングされていないチャネルからの受信は、そのチャネルの送信が完了する前に行われます。
 
-This program (as above, but with the send and receive statements swapped
-and using an unbuffered channel):
+このプログラム（上の例と同じですが、送信の文と受信の文を入れ替え、バッファリングされていないチャネルを使用しています）。
 
 ::
 
@@ -160,29 +150,15 @@ and using an unbuffered channel):
        }
        
 
-is also guaranteed to print ``"hello, world"``. The write to ``a``
-happens before the receive on ``c``, which happens before the
-corresponding send on ``c`` completes, which happens before the
-``print``.
+これは、"hello, world" を Print することも保証されています。 a への書き込みは c の受信よりも前に、かつ、対応する c の送信が完了する前にかつ、Print の前に行われます。
 
-If the channel were buffered (e.g., ``c = make(chan int, 1)``) then the
-program would not be guaranteed to print ``"hello, world"``. (It might
-print the empty string, crash, or do something else.)
+チャネルがバッファリングされていた場合 (例えば、c = make(chan int, 1))、プログラムは "hello, world" を表示することを保証しません (空の文字列を表示したり、クラッシュしたりするかもしれません)。(空の文字列を表示したり、クラッシュしたり、何か他のことをするかもしれません)。
 
-The *k*\ th receive on a channel with capacity *C* happens before the
-*k*\ +\ *C*\ th send from that channel completes.
+容量 C のチャネルでの k 回目の受信は、そのチャネルからの k+C 回目の送信が完了する前に起こります。
 
-This rule generalizes the previous rule to buffered channels. It allows
-a counting semaphore to be modeled by a buffered channel: the number of
-items in the channel corresponds to the number of active uses, the
-capacity of the channel corresponds to the maximum number of
-simultaneous uses, sending an item acquires the semaphore, and receiving
-an item releases the semaphore. This is a common idiom for limiting
-concurrency.
+この規則は前の規則をバッファリングされたチャネルに一般化したものです。チャネル内のアイテムの数はアクティブに使っている数に対応し、チャネルの容量は同時に使用する最大数に対応し、アイテムを送信することでセマフォを獲得し、アイテムを受信することでセマフォを解放します。これは、同時実行性を制限するための一般的な慣用句です。
 
-This program starts a goroutine for every entry in the work list, but
-the goroutines coordinate using the ``limit`` channel to ensure that at
-most three are running work functions at a time.
+このプログラムでは、ワークリストの各エントリに対してゴルーチンを開始しますが、ゴルーチンは制限されたチャネルを使用して調整し、最大でも3つのワーク関数が同時に実行されるようにしています。
 
 ::
 
@@ -200,17 +176,12 @@ most three are running work functions at a time.
        }
        
 
-Locks
-~~~~~
+ロック(Locks)
+~~~~~~~~~~~~~~~~
 
-The ``sync`` package implements two lock data types, ``sync.Mutex`` and
-``sync.RWMutex``.
+sync パッケージは、sync.Mutex と sync.RWMutex という二つのロックデータ型を実装しています。
 
-For any ``sync.Mutex`` or ``sync.RWMutex`` variable ``l`` and *n* < *m*,
-call *n* of ``l.Unlock()`` happens before call *m* of ``l.Lock()``
-returns.
-
-This program:
+任意の sync.Mutex または sync.RWMutex 変数 l と n < m の場合、l.Lock() の呼び出し m が返される前に l.Unlock() の呼び出し n が行われます。
 
 ::
 
@@ -228,30 +199,17 @@ This program:
            l.Lock()
            print(a)
        }
-       
 
-is guaranteed to print ``"hello, world"``. The first call to
-``l.Unlock()`` (in ``f``) happens before the second call to ``l.Lock()``
-(in ``main``) returns, which happens before the ``print``.
+このプログラムは、"hello, world "を出力することが保証されています。l.Unlock() (f) の最初の呼び出しは、l.Lock() (main) の 2 番目の呼び出しが返ってくる前に行われ、これは出力の前に行われます。
 
-For any call to ``l.RLock`` on a ``sync.RWMutex`` variable ``l``, there
-is an *n* such that the ``l.RLock`` happens (returns) after call *n* to
-``l.Unlock`` and the matching ``l.RUnlock`` happens before call *n*\ +1
-to ``l.Lock``.
+sync.RWMutex 変数 l 上の l.RLock への任意の呼び出しについては、l.Unlock への呼び出し n の後に l.RLock が発生(戻り)し、一致する l.RUnlock が l.Lock への呼び出し n+1 の前に発生するような n が存在します。
 
 Once
 ~~~~
 
-The ``sync`` package provides a safe mechanism for initialization in the
-presence of multiple goroutines through the use of the ``Once`` type.
-Multiple threads can execute ``once.Do(f)`` for a particular ``f``, but
-only one will run ``f()``, and the other calls block until ``f()`` has
-returned.
+sync パッケージは、 Once 型を使用することで、複数のゴルーチンが存在する場合に初期化のための安全なメカニズムを提供します。複数のスレッドが特定の f に対して once.Do(f) を実行することができますが、f() を実行するのは 1 つだけで、他の呼び出しは f() が戻るまでブロックされます。
 
-A single call of ``f()`` from ``once.Do(f)`` happens (returns) before
-any call of ``once.Do(f)`` returns.
-
-In this program:
+once.Do(f) からの単一の f() の呼び出しは、 once.Do(f) の呼び出しが返ってくる前に発生します(返ってきます)。
 
 ::
 
@@ -271,20 +229,13 @@ In this program:
            go doprint()
            go doprint()
        }
-       
 
-calling ``twoprint`` will call ``setup`` exactly once. The ``setup``
-function will complete before either call of ``print``. The result will
-be that ``"hello, world"`` will be printed twice.
+このプログラムでは、twoprint を呼び出すと setup が 1 回だけ呼び出されます。セットアップ関数は、どちらかのprintを呼び出す前に完了します。その結果、"hello, world" が2回出力されることになります。
 
-Incorrect synchronization
--------------------------
+誤った同期(Incorrect synchronization)
+--------------------------------------------------
 
-Note that a read r may observe the value written by a write w that
-happens concurrently with r. Even if this occurs, it does not imply that
-reads happening after r will observe writes that happened before w.
-
-In this program:
+読み取り r は、r と同時に発生した書き込み w によって書き込まれた値を観測する可能性があることに注意してください。このような場合でも、r の後に発生した読み取りが w の前に発生した書き込みを観測することを意味するわけではありません。
 
 ::
 
@@ -304,15 +255,12 @@ In this program:
            go f()
            g()
        }
-       
 
-it can happen that ``g`` prints ``2`` and then ``0``.
+このプログラムでは、g が 2 を表示してから 0 を表示することがあります。
 
-This fact invalidates a few common idioms.
+この事実は、いくつかの一般的なイディオムを無効にします。
 
-Double-checked locking is an attempt to avoid the overhead of
-synchronization. For example, the ``twoprint`` program might be
-incorrectly written as:
+ダブルチェックロックは同期化のオーバーヘッドを避けるための試みです。例えば、twooprintプログラムは次のように誤って書かれているかもしれません。
 
 ::
 
@@ -335,13 +283,10 @@ incorrectly written as:
            go doprint()
            go doprint()
        }
-       
 
-but there is no guarantee that, in ``doprint``, observing the write to
-``done`` implies observing the write to ``a``. This version can
-(incorrectly) print an empty string instead of ``"hello, world"``.
+このバージョンでは、"hello, world "の代わりに空の文字列を表示することができます。
 
-Another incorrect idiom is busy waiting for a value, as in:
+もう一つの間違ったイディオムは、次のように、値を待つのにビジーループを用いることです。
 
 ::
 
@@ -359,16 +304,10 @@ Another incorrect idiom is busy waiting for a value, as in:
            }
            print(a)
        }
-       
 
-As before, there is no guarantee that, in ``main``, observing the write
-to ``done`` implies observing the write to ``a``, so this program could
-print an empty string too. Worse, there is no guarantee that the write
-to ``done`` will ever be observed by ``main``, since there are no
-synchronization events between the two threads. The loop in ``main`` is
-not guaranteed to finish.
+前述のように、main で done への書き込みを観測することが a への書き込みを観測することを意味するという保証はないので、このプログラムも空の文字列を表示する可能性があります。さらに悪いことに、2 つのスレッド間には同期イベントがないので、 done への書き込みが main で観測されるという保証はありません。main のループが終了することは保証されていません。
 
-There are subtler variants on this theme, such as this program.
+このテーマには、このプログラムのような微妙な亜種があります。
 
 ::
 
@@ -390,10 +329,7 @@ There are subtler variants on this theme, such as this program.
            }
            print(g.msg)
        }
-       
 
-Even if ``main`` observes ``g != nil`` and exits its loop, there is no
-guarantee that it will observe the initialized value for ``g.msg``.
+main が g != nil を観測してループを終了したとしても、g.msg の初期化値を観測できる保証はありません。
 
-In all these examples, the solution is the same: use explicit
-synchronization.
+これらの例では、解決策はすべて同じです。

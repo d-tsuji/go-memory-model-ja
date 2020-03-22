@@ -75,15 +75,15 @@
 <p>そのマシンの一語より大きい値の参照および更新は、順不同の複数のマシンワードサイズの処理として振舞います。</p>
 </div>
 <div class="section" id="synchronization">
-<h1>Synchronization<a class="headerlink" href="#synchronization" title="このヘッドラインへのパーマリンク">¶</a></h1>
+<h1>同期(Synchronization)<a class="headerlink" href="#synchronization" title="このヘッドラインへのパーマリンク">¶</a></h1>
 <div class="section" id="initialization">
-<h2>Initialization<a class="headerlink" href="#initialization" title="このヘッドラインへのパーマリンク">¶</a></h2>
+<h2>初期化(Initialization)<a class="headerlink" href="#initialization" title="このヘッドラインへのパーマリンク">¶</a></h2>
 <p>プログラムの初期化は単一のゴルーチンで実行されますが、そのゴルーチンは同時に実行される別のゴルーチンを作成することがあります。</p>
 <p>パッケージ p がパッケージ q をインポートする場合、 q の init 関数は、任意の p の開始よりも前に完了します。</p>
 <p>関数 <code class="docutils literal notranslate"><span class="pre">main.main</span></code> の開始は、すべての <code class="docutils literal notranslate"><span class="pre">init</span></code> 関数が完了した後に発生します。</p>
 </div>
 <div class="section" id="goroutine-creation">
-<h2>Goroutine creation<a class="headerlink" href="#goroutine-creation" title="このヘッドラインへのパーマリンク">¶</a></h2>
+<h2>ゴルーチンの生成(Goroutine creation)<a class="headerlink" href="#goroutine-creation" title="このヘッドラインへのパーマリンク">¶</a></h2>
 <p>新しいゴルーチンを開始する <code class="docutils literal notranslate"><span class="pre">go</span></code> ステートメントは、ゴルーチンの実行が始まる前に発生します。</p>
 <p>例として次のプログラムを見てみます。</p>
 <div class="highlight-go notranslate"><div class="highlight"><pre><span></span><span class="kd">var</span> <span class="nx">a</span> <span class="kt">string</span>
@@ -101,7 +101,7 @@
 <p><code class="docutils literal notranslate"><span class="pre">hello</span></code> を呼び出すと、未来のある時点(おそらく <code class="docutils literal notranslate"><span class="pre">hello</span></code> が戻った後)で「hello、world」が出力されます。</p>
 </div>
 <div class="section" id="goroutine-destruction">
-<h2>Goroutine destruction<a class="headerlink" href="#goroutine-destruction" title="このヘッドラインへのパーマリンク">¶</a></h2>
+<h2>ゴルーチンの破壊(Goroutine destruction)<a class="headerlink" href="#goroutine-destruction" title="このヘッドラインへのパーマリンク">¶</a></h2>
 <p>ゴルーチンの終了は、プログラム内のイベントの前に発生することが保証されていません。例として以下のプログラムを見てみます。</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">var</span> <span class="n">a</span> <span class="n">string</span>
 
@@ -115,14 +115,10 @@
 <p>ゴルーチンの影響を別のゴルーチンで観察する必要がある場合は、ロックやチャネル通信などの同期メカニズムを使用して、相対的な順序を確立します。</p>
 </div>
 <div class="section" id="channel-communication">
-<h2>Channel communication<a class="headerlink" href="#channel-communication" title="このヘッドラインへのパーマリンク">¶</a></h2>
-<p>Channel communication is the main method of synchronization between
-goroutines. Each send on a particular channel is matched to a
-corresponding receive from that channel, usually in a different
-goroutine.</p>
-<p>A send on a channel happens before the corresponding receive from that
-channel completes.</p>
-<p>This program:</p>
+<h2>チャネル通信(Channel communication)<a class="headerlink" href="#channel-communication" title="このヘッドラインへのパーマリンク">¶</a></h2>
+<p>チャネル通信は、ゴルーチンを同期させる主な方法です。特定のチャネルでのそれぞれの送信は、そのチャネルからの対応する受信と関連しており、通常は別のゴルーチンで行われます。</p>
+<p>あるチャネルでの送信は、そのチャネルからの対応する受信が完了する前に行われます。</p>
+<p>以下の例です。</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">var</span> <span class="n">c</span> <span class="o">=</span> <span class="n">make</span><span class="p">(</span><span class="n">chan</span> <span class="nb">int</span><span class="p">,</span> <span class="mi">10</span><span class="p">)</span>
 <span class="n">var</span> <span class="n">a</span> <span class="n">string</span>
 
@@ -138,17 +134,11 @@ channel completes.</p>
 <span class="p">}</span>
 </pre></div>
 </div>
-<p>is guaranteed to print <code class="docutils literal notranslate"><span class="pre">&quot;hello,</span> <span class="pre">world&quot;</span></code>. The write to <code class="docutils literal notranslate"><span class="pre">a</span></code> happens
-before the send on <code class="docutils literal notranslate"><span class="pre">c</span></code>, which happens before the corresponding receive
-on <code class="docutils literal notranslate"><span class="pre">c</span></code> completes, which happens before the <code class="docutils literal notranslate"><span class="pre">print</span></code>.</p>
-<p>The closing of a channel happens before a receive that returns a zero
-value because the channel is closed.</p>
-<p>In the previous example, replacing <code class="docutils literal notranslate"><span class="pre">c</span> <span class="pre">&lt;-</span> <span class="pre">0</span></code> with <code class="docutils literal notranslate"><span class="pre">close(c)</span></code> yields a
-program with the same guaranteed behavior.</p>
-<p>A receive from an unbuffered channel happens before the send on that
-channel completes.</p>
-<p>This program (as above, but with the send and receive statements swapped
-and using an unbuffered channel):</p>
+<p>これは &quot;hello, world&quot; と表示されることが保証されています。a への書き込みは、c への送信の前に行われ、対応する c への受信が完了する前に行われ、Print の前に行われます。</p>
+<p>チャネルのクローズは、チャネルがクローズされているため、ゼロ値を返す受信の前に起こります。</p>
+<p>前の例では、c &lt;- 0 を close(c) に置き換えると、同じ動作が保証されたプログラムが得られます。</p>
+<p>バッファリングされていないチャネルからの受信は、そのチャネルの送信が完了する前に行われます。</p>
+<p>このプログラム（上の例と同じですが、送信の文と受信の文を入れ替え、バッファリングされていないチャネルを使用しています）。</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">var</span> <span class="n">c</span> <span class="o">=</span> <span class="n">make</span><span class="p">(</span><span class="n">chan</span> <span class="nb">int</span><span class="p">)</span>
 <span class="n">var</span> <span class="n">a</span> <span class="n">string</span>
 
@@ -164,25 +154,11 @@ and using an unbuffered channel):</p>
 <span class="p">}</span>
 </pre></div>
 </div>
-<p>is also guaranteed to print <code class="docutils literal notranslate"><span class="pre">&quot;hello,</span> <span class="pre">world&quot;</span></code>. The write to <code class="docutils literal notranslate"><span class="pre">a</span></code>
-happens before the receive on <code class="docutils literal notranslate"><span class="pre">c</span></code>, which happens before the
-corresponding send on <code class="docutils literal notranslate"><span class="pre">c</span></code> completes, which happens before the
-<code class="docutils literal notranslate"><span class="pre">print</span></code>.</p>
-<p>If the channel were buffered (e.g., <code class="docutils literal notranslate"><span class="pre">c</span> <span class="pre">=</span> <span class="pre">make(chan</span> <span class="pre">int,</span> <span class="pre">1)</span></code>) then the
-program would not be guaranteed to print <code class="docutils literal notranslate"><span class="pre">&quot;hello,</span> <span class="pre">world&quot;</span></code>. (It might
-print the empty string, crash, or do something else.)</p>
-<p>The <em>k</em>th receive on a channel with capacity <em>C</em> happens before the
-<em>k</em>+<em>C</em>th send from that channel completes.</p>
-<p>This rule generalizes the previous rule to buffered channels. It allows
-a counting semaphore to be modeled by a buffered channel: the number of
-items in the channel corresponds to the number of active uses, the
-capacity of the channel corresponds to the maximum number of
-simultaneous uses, sending an item acquires the semaphore, and receiving
-an item releases the semaphore. This is a common idiom for limiting
-concurrency.</p>
-<p>This program starts a goroutine for every entry in the work list, but
-the goroutines coordinate using the <code class="docutils literal notranslate"><span class="pre">limit</span></code> channel to ensure that at
-most three are running work functions at a time.</p>
+<p>これは、&quot;hello, world&quot; を Print することも保証されています。 a への書き込みは c の受信よりも前に、かつ、対応する c の送信が完了する前にかつ、Print の前に行われます。</p>
+<p>チャネルがバッファリングされていた場合 (例えば、c = make(chan int, 1))、プログラムは &quot;hello, world&quot; を表示することを保証しません (空の文字列を表示したり、クラッシュしたりするかもしれません)。(空の文字列を表示したり、クラッシュしたり、何か他のことをするかもしれません)。</p>
+<p>容量 C のチャネルでの k 回目の受信は、そのチャネルからの k+C 回目の送信が完了する前に起こります。</p>
+<p>この規則は前の規則をバッファリングされたチャネルに一般化したものです。チャネル内のアイテムの数はアクティブに使っている数に対応し、チャネルの容量は同時に使用する最大数に対応し、アイテムを送信することでセマフォを獲得し、アイテムを受信することでセマフォを解放します。これは、同時実行性を制限するための一般的な慣用句です。</p>
+<p>このプログラムでは、ワークリストの各エントリに対してゴルーチンを開始しますが、ゴルーチンは制限されたチャネルを使用して調整し、最大でも3つのワーク関数が同時に実行されるようにしています。</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">var</span> <span class="n">limit</span> <span class="o">=</span> <span class="n">make</span><span class="p">(</span><span class="n">chan</span> <span class="nb">int</span><span class="p">,</span> <span class="mi">3</span><span class="p">)</span>
 
 <span class="n">func</span> <span class="n">main</span><span class="p">()</span> <span class="p">{</span>
@@ -199,13 +175,9 @@ most three are running work functions at a time.</p>
 </div>
 </div>
 <div class="section" id="locks">
-<h2>Locks<a class="headerlink" href="#locks" title="このヘッドラインへのパーマリンク">¶</a></h2>
-<p>The <code class="docutils literal notranslate"><span class="pre">sync</span></code> package implements two lock data types, <code class="docutils literal notranslate"><span class="pre">sync.Mutex</span></code> and
-<code class="docutils literal notranslate"><span class="pre">sync.RWMutex</span></code>.</p>
-<p>For any <code class="docutils literal notranslate"><span class="pre">sync.Mutex</span></code> or <code class="docutils literal notranslate"><span class="pre">sync.RWMutex</span></code> variable <code class="docutils literal notranslate"><span class="pre">l</span></code> and <em>n</em> &lt; <em>m</em>,
-call <em>n</em> of <code class="docutils literal notranslate"><span class="pre">l.Unlock()</span></code> happens before call <em>m</em> of <code class="docutils literal notranslate"><span class="pre">l.Lock()</span></code>
-returns.</p>
-<p>This program:</p>
+<h2>ロック(Locks)<a class="headerlink" href="#locks" title="このヘッドラインへのパーマリンク">¶</a></h2>
+<p>sync パッケージは、sync.Mutex と sync.RWMutex という二つのロックデータ型を実装しています。</p>
+<p>任意の sync.Mutex または sync.RWMutex 変数 l と n &lt; m の場合、l.Lock() の呼び出し m が返される前に l.Unlock() の呼び出し n が行われます。</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">var</span> <span class="n">l</span> <span class="n">sync</span><span class="o">.</span><span class="n">Mutex</span>
 <span class="n">var</span> <span class="n">a</span> <span class="n">string</span>
 
@@ -222,24 +194,13 @@ returns.</p>
 <span class="p">}</span>
 </pre></div>
 </div>
-<p>is guaranteed to print <code class="docutils literal notranslate"><span class="pre">&quot;hello,</span> <span class="pre">world&quot;</span></code>. The first call to
-<code class="docutils literal notranslate"><span class="pre">l.Unlock()</span></code> (in <code class="docutils literal notranslate"><span class="pre">f</span></code>) happens before the second call to <code class="docutils literal notranslate"><span class="pre">l.Lock()</span></code>
-(in <code class="docutils literal notranslate"><span class="pre">main</span></code>) returns, which happens before the <code class="docutils literal notranslate"><span class="pre">print</span></code>.</p>
-<p>For any call to <code class="docutils literal notranslate"><span class="pre">l.RLock</span></code> on a <code class="docutils literal notranslate"><span class="pre">sync.RWMutex</span></code> variable <code class="docutils literal notranslate"><span class="pre">l</span></code>, there
-is an <em>n</em> such that the <code class="docutils literal notranslate"><span class="pre">l.RLock</span></code> happens (returns) after call <em>n</em> to
-<code class="docutils literal notranslate"><span class="pre">l.Unlock</span></code> and the matching <code class="docutils literal notranslate"><span class="pre">l.RUnlock</span></code> happens before call <em>n</em>+1
-to <code class="docutils literal notranslate"><span class="pre">l.Lock</span></code>.</p>
+<p>このプログラムは、&quot;hello, world &quot;を出力することが保証されています。l.Unlock() (f) の最初の呼び出しは、l.Lock() (main) の 2 番目の呼び出しが返ってくる前に行われ、これは出力の前に行われます。</p>
+<p>sync.RWMutex 変数 l 上の l.RLock への任意の呼び出しについては、l.Unlock への呼び出し n の後に l.RLock が発生(戻り)し、一致する l.RUnlock が l.Lock への呼び出し n+1 の前に発生するような n が存在します。</p>
 </div>
 <div class="section" id="once">
 <h2>Once<a class="headerlink" href="#once" title="このヘッドラインへのパーマリンク">¶</a></h2>
-<p>The <code class="docutils literal notranslate"><span class="pre">sync</span></code> package provides a safe mechanism for initialization in the
-presence of multiple goroutines through the use of the <code class="docutils literal notranslate"><span class="pre">Once</span></code> type.
-Multiple threads can execute <code class="docutils literal notranslate"><span class="pre">once.Do(f)</span></code> for a particular <code class="docutils literal notranslate"><span class="pre">f</span></code>, but
-only one will run <code class="docutils literal notranslate"><span class="pre">f()</span></code>, and the other calls block until <code class="docutils literal notranslate"><span class="pre">f()</span></code> has
-returned.</p>
-<p>A single call of <code class="docutils literal notranslate"><span class="pre">f()</span></code> from <code class="docutils literal notranslate"><span class="pre">once.Do(f)</span></code> happens (returns) before
-any call of <code class="docutils literal notranslate"><span class="pre">once.Do(f)</span></code> returns.</p>
-<p>In this program:</p>
+<p>sync パッケージは、 Once 型を使用することで、複数のゴルーチンが存在する場合に初期化のための安全なメカニズムを提供します。複数のスレッドが特定の f に対して once.Do(f) を実行することができますが、f() を実行するのは 1 つだけで、他の呼び出しは f() が戻るまでブロックされます。</p>
+<p>once.Do(f) からの単一の f() の呼び出しは、 once.Do(f) の呼び出しが返ってくる前に発生します(返ってきます)。</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">var</span> <span class="n">a</span> <span class="n">string</span>
 <span class="n">var</span> <span class="n">once</span> <span class="n">sync</span><span class="o">.</span><span class="n">Once</span>
 
@@ -258,17 +219,12 @@ any call of <code class="docutils literal notranslate"><span class="pre">once.Do
 <span class="p">}</span>
 </pre></div>
 </div>
-<p>calling <code class="docutils literal notranslate"><span class="pre">twoprint</span></code> will call <code class="docutils literal notranslate"><span class="pre">setup</span></code> exactly once. The <code class="docutils literal notranslate"><span class="pre">setup</span></code>
-function will complete before either call of <code class="docutils literal notranslate"><span class="pre">print</span></code>. The result will
-be that <code class="docutils literal notranslate"><span class="pre">&quot;hello,</span> <span class="pre">world&quot;</span></code> will be printed twice.</p>
+<p>このプログラムでは、twoprint を呼び出すと setup が 1 回だけ呼び出されます。セットアップ関数は、どちらかのprintを呼び出す前に完了します。その結果、&quot;hello, world&quot; が2回出力されることになります。</p>
 </div>
 </div>
 <div class="section" id="incorrect-synchronization">
-<h1>Incorrect synchronization<a class="headerlink" href="#incorrect-synchronization" title="このヘッドラインへのパーマリンク">¶</a></h1>
-<p>Note that a read r may observe the value written by a write w that
-happens concurrently with r. Even if this occurs, it does not imply that
-reads happening after r will observe writes that happened before w.</p>
-<p>In this program:</p>
+<h1>誤った同期(Incorrect synchronization)<a class="headerlink" href="#incorrect-synchronization" title="このヘッドラインへのパーマリンク">¶</a></h1>
+<p>読み取り r は、r と同時に発生した書き込み w によって書き込まれた値を観測する可能性があることに注意してください。このような場合でも、r の後に発生した読み取りが w の前に発生した書き込みを観測することを意味するわけではありません。</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">var</span> <span class="n">a</span><span class="p">,</span> <span class="n">b</span> <span class="nb">int</span>
 
 <span class="n">func</span> <span class="n">f</span><span class="p">()</span> <span class="p">{</span>
@@ -287,11 +243,9 @@ reads happening after r will observe writes that happened before w.</p>
 <span class="p">}</span>
 </pre></div>
 </div>
-<p>it can happen that <code class="docutils literal notranslate"><span class="pre">g</span></code> prints <code class="docutils literal notranslate"><span class="pre">2</span></code> and then <code class="docutils literal notranslate"><span class="pre">0</span></code>.</p>
-<p>This fact invalidates a few common idioms.</p>
-<p>Double-checked locking is an attempt to avoid the overhead of
-synchronization. For example, the <code class="docutils literal notranslate"><span class="pre">twoprint</span></code> program might be
-incorrectly written as:</p>
+<p>このプログラムでは、g が 2 を表示してから 0 を表示することがあります。</p>
+<p>この事実は、いくつかの一般的なイディオムを無効にします。</p>
+<p>ダブルチェックロックは同期化のオーバーヘッドを避けるための試みです。例えば、twooprintプログラムは次のように誤って書かれているかもしれません。</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span>var a string
 var done bool
 
@@ -313,10 +267,8 @@ func twoprint() {
 }
 </pre></div>
 </div>
-<p>but there is no guarantee that, in <code class="docutils literal notranslate"><span class="pre">doprint</span></code>, observing the write to
-<code class="docutils literal notranslate"><span class="pre">done</span></code> implies observing the write to <code class="docutils literal notranslate"><span class="pre">a</span></code>. This version can
-(incorrectly) print an empty string instead of <code class="docutils literal notranslate"><span class="pre">&quot;hello,</span> <span class="pre">world&quot;</span></code>.</p>
-<p>Another incorrect idiom is busy waiting for a value, as in:</p>
+<p>このバージョンでは、&quot;hello, world &quot;の代わりに空の文字列を表示することができます。</p>
+<p>もう一つの間違ったイディオムは、次のように、値を待つのにビジーループを用いることです。</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span>var a string
 var done bool
 
@@ -333,13 +285,8 @@ func main() {
 }
 </pre></div>
 </div>
-<p>As before, there is no guarantee that, in <code class="docutils literal notranslate"><span class="pre">main</span></code>, observing the write
-to <code class="docutils literal notranslate"><span class="pre">done</span></code> implies observing the write to <code class="docutils literal notranslate"><span class="pre">a</span></code>, so this program could
-print an empty string too. Worse, there is no guarantee that the write
-to <code class="docutils literal notranslate"><span class="pre">done</span></code> will ever be observed by <code class="docutils literal notranslate"><span class="pre">main</span></code>, since there are no
-synchronization events between the two threads. The loop in <code class="docutils literal notranslate"><span class="pre">main</span></code> is
-not guaranteed to finish.</p>
-<p>There are subtler variants on this theme, such as this program.</p>
+<p>前述のように、main で done への書き込みを観測することが a への書き込みを観測することを意味するという保証はないので、このプログラムも空の文字列を表示する可能性があります。さらに悪いことに、2 つのスレッド間には同期イベントがないので、 done への書き込みが main で観測されるという保証はありません。main のループが終了することは保証されていません。</p>
+<p>このテーマには、このプログラムのような微妙な亜種があります。</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nb">type</span> <span class="n">T</span> <span class="n">struct</span> <span class="p">{</span>
     <span class="n">msg</span> <span class="n">string</span>
 <span class="p">}</span>
@@ -360,10 +307,8 @@ not guaranteed to finish.</p>
 <span class="p">}</span>
 </pre></div>
 </div>
-<p>Even if <code class="docutils literal notranslate"><span class="pre">main</span></code> observes <code class="docutils literal notranslate"><span class="pre">g</span> <span class="pre">!=</span> <span class="pre">nil</span></code> and exits its loop, there is no
-guarantee that it will observe the initialized value for <code class="docutils literal notranslate"><span class="pre">g.msg</span></code>.</p>
-<p>In all these examples, the solution is the same: use explicit
-synchronization.</p>
+<p>main が g != nil を観測してループを終了したとしても、g.msg の初期化値を観測できる保証はありません。</p>
+<p>これらの例では、解決策はすべて同じです。</p>
 </div>
 
 
@@ -377,16 +322,16 @@ synchronization.</p>
 <li><a class="reference internal" href="#">Introduction</a></li>
 <li><a class="reference internal" href="#advice">Advice</a></li>
 <li><a class="reference internal" href="#happens-before">Happens Before</a></li>
-<li><a class="reference internal" href="#synchronization">Synchronization</a><ul>
-<li><a class="reference internal" href="#initialization">Initialization</a></li>
-<li><a class="reference internal" href="#goroutine-creation">Goroutine creation</a></li>
-<li><a class="reference internal" href="#goroutine-destruction">Goroutine destruction</a></li>
-<li><a class="reference internal" href="#channel-communication">Channel communication</a></li>
-<li><a class="reference internal" href="#locks">Locks</a></li>
+<li><a class="reference internal" href="#synchronization">同期(Synchronization)</a><ul>
+<li><a class="reference internal" href="#initialization">初期化(Initialization)</a></li>
+<li><a class="reference internal" href="#goroutine-creation">ゴルーチンの生成(Goroutine creation)</a></li>
+<li><a class="reference internal" href="#goroutine-destruction">ゴルーチンの破壊(Goroutine destruction)</a></li>
+<li><a class="reference internal" href="#channel-communication">チャネル通信(Channel communication)</a></li>
+<li><a class="reference internal" href="#locks">ロック(Locks)</a></li>
 <li><a class="reference internal" href="#once">Once</a></li>
 </ul>
 </li>
-<li><a class="reference internal" href="#incorrect-synchronization">Incorrect synchronization</a></li>
+<li><a class="reference internal" href="#incorrect-synchronization">誤った同期(Incorrect synchronization)</a></li>
 </ul>
 
   <h4>前のトピックへ</h4>
@@ -405,11 +350,11 @@ synchronization.</p>
     <h4>Page Info</h4>
     <p>
         <ul>
-            <li>英数記号: 4811</li>
-            <li>非アスキー: 1630</li>
-            <li>合計文字数: 6441</li>
-            <li>半角換算: 8071</li>
-            <li>全角換算: 4035.5</li>
+            <li>英数記号: 976</li>
+            <li>非アスキー: 3505</li>
+            <li>合計文字数: 4481</li>
+            <li>半角換算: 7986</li>
+            <li>全角換算: 3993.0</li>
         </ul>
     </p>
 </div>
